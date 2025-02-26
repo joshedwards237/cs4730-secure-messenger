@@ -1,0 +1,12 @@
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  margin-top: 4rem; /* Height of navbar */
+  padding: 2rem;
+  flex: 1;
+  background-color: #f8f9fa;
+} 

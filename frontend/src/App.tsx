@@ -5,19 +5,26 @@ import Register from './components/Auth/Register';
 import ChatList from './components/Chat/ChatList';
 import ChatRoom from './components/Chat/ChatRoom';
 import AccountPage from './components/Account/AccountPage';
+import FriendsList from './components/Friends/FriendsList';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/Auth/PrivateRoute';
+import Layout from './components/Layout/Layout';
 import './App.css';
 
 const AppRoutes: React.FC = () => {
   return (
-    <div className="app">
+    <Layout>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/account" element={
           <PrivateRoute>
             <AccountPage />
+          </PrivateRoute>
+        } />
+        <Route path="/friends" element={
+          <PrivateRoute>
+            <FriendsList />
           </PrivateRoute>
         } />
         <Route path="/chats" element={
@@ -32,7 +39,7 @@ const AppRoutes: React.FC = () => {
         } />
         <Route path="/" element={<Navigate to="/chats" />} />
       </Routes>
-    </div>
+    </Layout>
   );
 };
 
