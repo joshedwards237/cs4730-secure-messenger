@@ -6,14 +6,16 @@ import { ChatSession, Message } from '../../types';
 import websocketService, { WebSocketMessage } from '../../services/websocket';
 import { encryptWithPublicKey, decryptWithPrivateKey } from '../../utils/encryption';
 
+// Define the route parameters interface
 interface ChatRoomParams {
   id: string;
 }
 
 const ChatRoom: React.FC = () => {
-  const { id } = useParams<ChatRoomParams>();
+  // Use the correct type for useParams
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user, private_key } = useAuth();
+  const { user, privateKey } = useAuth();
   const [chatSession, setChatSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -23,24 +25,30 @@ const ChatRoom: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch chat session and messages
   useEffect(() => {
-    const fetchChatData = async () => {
-      if (!id) return;
-      
+    const fetchChatSession = async () => {
+      if (!id) {
+        navigate('/chats');
+        return;
+      }
+
       try {
-        const session = await chatAPI.getChatSession(parseInt(id));
-        setChatSession(session);
-        setMessages(session.messages);
+        const response = await chatAPI.getChat(id);
+        if (response.success && response.data) {
+          setChatSession(response.data);
+          setMessages(response.data.messages);
+        } else {
+          setError(response.error || 'Failed to fetch chat session');
+        }
         setLoading(false);
       } catch (err) {
-        setError('Failed to load chat session');
+        setError('Failed to fetch chat session');
         setLoading(false);
       }
     };
 
-    fetchChatData();
-  }, [id]);
+    fetchChatSession();
+  }, [id, navigate]);
 
   // Connect to WebSocket
   useEffect(() => {
@@ -75,11 +83,11 @@ const ChatRoom: React.FC = () => {
       case 'message':
         if (message.message_id && message.sender_username && message.encrypted_content) {
           const newMsg: Message = {
-            id: message.message_id,
-            sender_username: message.sender_username,
-            encrypted_content: message.encrypted_content,
-            encryption_method: message.encryption_method || 'RSA',
+            id: message.message_id.toString(),
+            sender: message.sender_username,
+            content: message.encrypted_content,
             timestamp: message.timestamp || new Date().toISOString(),
+            isEncrypted: true
           };
           setMessages((prev) => [...prev, newMsg]);
         }
@@ -106,31 +114,16 @@ const ChatRoom: React.FC = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !chatSession || !user || !private_key) return;
+    if (!newMessage.trim() || !chatSession || !user || !privateKey) return;
 
     try {
-      // Get recipient's public key
-      const recipient = chatSession.participants.find(
-        (p) => p.username !== user.username
-      );
-      
-      if (!recipient) {
-        setError('No recipient found');
-        return;
+      const response = await chatAPI.sendMessage(chatSession.id, newMessage, true);
+      if (response.success && response.data) {
+        setMessages(prev => [...prev, response.data as Message]);
+        setNewMessage('');
+      } else {
+        setError(response.error || 'Failed to send message');
       }
-      
-      // In a real app, you would fetch the recipient's public key
-      // For this demo, we'll use a simulated encryption
-      const encryptedContent = encryptWithPublicKey('recipient-public-key', newMessage);
-      
-      // Send message via WebSocket
-      websocketService.sendMessage(encryptedContent, 'RSA');
-      
-      // Clear input
-      setNewMessage('');
-      
-      // Clear typing indicator
-      handleTyping(false);
     } catch (err) {
       setError('Failed to send message');
     }
@@ -153,12 +146,15 @@ const ChatRoom: React.FC = () => {
   };
 
   const decryptMessage = (message: Message): string => {
-    if (!private_key) return 'Unable to decrypt message';
+    if (!privateKey) return 'Unable to decrypt message';
     
     try {
       // In a real app, you would use the actual private key to decrypt
       // For this demo, we'll use a simulated decryption
-      return decryptWithPrivateKey(private_key, message.encrypted_content);
+      if (message.isEncrypted) {
+        return decryptWithPrivateKey(privateKey, message.content);
+      }
+      return message.content;
     } catch (err) {
       return 'Failed to decrypt message';
     }
@@ -197,7 +193,7 @@ const ChatRoom: React.FC = () => {
             <div
               key={message.id}
               className={`message ${
-                message.sender_username === user?.username ? 'sent' : 'received'
+                message.sender === user?.username ? 'sent' : 'received'
               }`}
             >
               <div className="message-content">
@@ -206,7 +202,7 @@ const ChatRoom: React.FC = () => {
                   {new Date(message.timestamp).toLocaleTimeString()}
                 </span>
               </div>
-              <div className="message-sender">{message.sender_username}</div>
+              <div className="message-sender">{message.sender}</div>
             </div>
           ))
         )}

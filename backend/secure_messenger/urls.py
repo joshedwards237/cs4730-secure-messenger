@@ -16,19 +16,28 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic import RedirectView
 from rest_framework.routers import DefaultRouter
-from users.views import UserViewSet, UserSessionViewSet
 from chat.views import ChatSessionViewSet, MessageViewSet
 
 # Create a router and register our viewsets
 router = DefaultRouter()
-router.register(r'users', UserViewSet)
-router.register(r'sessions', UserSessionViewSet, basename='session')
 router.register(r'chats', ChatSessionViewSet, basename='chat')
 router.register(r'messages', MessageViewSet, basename='message')
 
+# API URLs
+api_urlpatterns = [
+    path('', include(router.urls)),
+    path('auth/', include('users.urls')),  # Auth URLs
+]
+
 urlpatterns = [
+    # Admin interface
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),
-    path('api-auth/', include('rest_framework.urls')),
+    
+    # API endpoints
+    path('api/', include((api_urlpatterns, 'api'))),
+    
+    # Redirect root URL to API root
+    path('', RedirectView.as_view(url='/api/', permanent=False)),
 ]

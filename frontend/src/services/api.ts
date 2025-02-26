@@ -1,5 +1,14 @@
 import axios from 'axios';
-import { LoginFormData, RegisterFormData, ApiResponse, User, Chat, Message } from '../types';
+import { 
+  LoginFormData, 
+  RegisterFormData, 
+  ApiResponse, 
+  User, 
+  Message, 
+  LoginResponse, 
+  RegisterResponse, 
+  ChatSession 
+} from '../types';
 
 // Create axios instance with base URL and default headers
 const api = axios.create({
@@ -23,9 +32,9 @@ api.interceptors.request.use(
 
 // Authentication API calls
 export const authAPI = {
-  login: async (data: LoginFormData): Promise<ApiResponse<{ user: User; token: string }>> => {
+  login: async (username: string, password: string): Promise<ApiResponse<LoginResponse>> => {
     try {
-      const response = await api.post('/auth/login/', data);
+      const response = await api.post('/auth/login/', { username, password });
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
@@ -35,9 +44,9 @@ export const authAPI = {
     }
   },
 
-  register: async (data: RegisterFormData): Promise<ApiResponse<{ user: User; token: string }>> => {
+  register: async (username: string, password: string, publicKey: string): Promise<ApiResponse<RegisterResponse>> => {
     try {
-      const response = await api.post('/auth/register/', data);
+      const response = await api.post('/auth/register/', { username, password, public_key: publicKey });
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
@@ -74,7 +83,7 @@ export const authAPI = {
 
 // Chat API calls
 export const chatAPI = {
-  getChats: async (): Promise<ApiResponse<Chat[]>> => {
+  getChats: async (): Promise<ApiResponse<ChatSession[]>> => {
     try {
       const response = await api.get('/chats/');
       return { success: true, data: response.data };
@@ -86,7 +95,7 @@ export const chatAPI = {
     }
   },
 
-  getChat: async (chatId: string): Promise<ApiResponse<Chat>> => {
+  getChat: async (chatId: string): Promise<ApiResponse<ChatSession>> => {
     try {
       const response = await api.get(`/chats/${chatId}/`);
       return { success: true, data: response.data };
@@ -98,7 +107,7 @@ export const chatAPI = {
     }
   },
 
-  createChat: async (participants: string[]): Promise<ApiResponse<Chat>> => {
+  createChat: async (participants: string[]): Promise<ApiResponse<ChatSession>> => {
     try {
       const response = await api.post('/chats/', { participants });
       return { success: true, data: response.data };
