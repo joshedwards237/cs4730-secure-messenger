@@ -169,3 +169,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Node modules
+node_modules/
+frontend/node_modules/
+SecureMessenger/node_modules/
+*/node_modules/
