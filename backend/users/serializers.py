@@ -1,15 +1,15 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import UserSession
+from .models import CustomUser, UserSession
 
 User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
-        fields = ['id', 'username', 'public_key', 'date_joined']
-        read_only_fields = ['date_joined']
+        model = CustomUser
+        fields = ['id', 'username', 'public_key']
+        read_only_fields = ['id']
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -17,11 +17,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     public_key = serializers.CharField(required=False)
     
     class Meta:
-        model = User
+        model = CustomUser
         fields = ['username', 'password', 'public_key']
     
     def create(self, validated_data):
-        user = User.objects.create_user(
+        user = CustomUser.objects.create_user(
             username=validated_data['username'],
             password=validated_data['password'],
             public_key=validated_data.get('public_key', '')
@@ -34,5 +34,5 @@ class UserSessionSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UserSession
-        fields = ['id', 'username', 'session_id', 'created_at', 'last_active', 'is_active']
+        fields = ['id', 'user', 'session_id', 'created_at', 'last_active', 'is_active', 'username']
         read_only_fields = ['id', 'created_at', 'last_active'] 

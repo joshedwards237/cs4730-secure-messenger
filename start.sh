@@ -24,6 +24,13 @@ handle_error() {
     exit 1
 }
 
+# Detect operating system and set virtual environment path
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+    VENV_ACTIVATE="venv/Scripts/activate"
+else
+    VENV_ACTIVATE="venv/bin/activate"
+fi
+
 # Create and activate virtual environment if it doesn't exist
 if [ ! -d "venv" ]; then
     echo "Creating Python virtual environment..."
@@ -32,7 +39,7 @@ fi
 
 # Activate virtual environment
 echo "Activating virtual environment..."
-source venv/Scripts/activate || handle_error "Failed to activate virtual environment"
+source "$VENV_ACTIVATE" || handle_error "Failed to activate virtual environment"
 
 # Install backend dependencies
 echo "Installing backend dependencies..."

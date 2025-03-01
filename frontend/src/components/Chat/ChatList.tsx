@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { chatAPI } from '../../services/api';
-import { ChatSession } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+import { ChatSession } from '../../types';
 
 const ChatList: React.FC = () => {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -14,11 +14,15 @@ const ChatList: React.FC = () => {
   useEffect(() => {
     const fetchChatSessions = async () => {
       try {
-        const sessions = await chatAPI.getChatSessions();
-        setChatSessions(sessions);
+        const response = await chatAPI.getChats();
+        if (response.success && response.data) {
+          setChatSessions(response.data);
+        } else {
+          setError(response.error || 'Failed to fetch chat sessions');
+        }
         setLoading(false);
       } catch (err) {
-        setError('Failed to load chat sessions');
+        setError('Failed to fetch chat sessions');
         setLoading(false);
       }
     };
@@ -28,19 +32,24 @@ const ChatList: React.FC = () => {
 
   const handleCreateChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newChatUsername) return;
+    if (!newChatUsername.trim()) return;
 
     try {
-      const newChat = await chatAPI.createChatSession([newChatUsername]);
-      setChatSessions([...chatSessions, newChat]);
-      setNewChatUsername('');
+      const response = await chatAPI.createChat([newChatUsername]);
+      if (response.success && response.data) {
+        const newSession: ChatSession = response.data;
+        setChatSessions(prev => [...prev, newSession]);
+        setNewChatUsername('');
+      } else {
+        setError(response.error || 'Failed to create chat');
+      }
     } catch (err) {
-      setError('Failed to create chat session');
+      setError('Failed to create chat');
     }
   };
 
   if (loading) {
-    return <div className="loading">Loading chat sessions...</div>;
+    return <div>Loading...</div>;
   }
 
   return (
