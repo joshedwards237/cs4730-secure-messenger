@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { chatAPI } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
 import { ChatSession } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ChatList: React.FC = () => {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -14,15 +14,16 @@ const ChatList: React.FC = () => {
   useEffect(() => {
     const fetchChatSessions = async () => {
       try {
-        const response = await chatAPI.getChats();
-        if (response.success && response.data) {
-          setChatSessions(response.data);
+        const response = await chatAPI.getChatSessions();
+        // Type guard to check if response is an Axios response
+        if (response && typeof response === 'object' && 'data' in response) {
+          setChatSessions(response.data as ChatSession[]);
         } else {
-          setError(response.error || 'Failed to fetch chat sessions');
+          setChatSessions(response as ChatSession[]);
         }
         setLoading(false);
       } catch (err) {
-        setError('Failed to fetch chat sessions');
+        setError('Failed to load chat sessions');
         setLoading(false);
       }
     };
@@ -32,24 +33,24 @@ const ChatList: React.FC = () => {
 
   const handleCreateChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newChatUsername.trim()) return;
+    if (!newChatUsername) return;
 
     try {
-      const response = await chatAPI.createChat([newChatUsername]);
-      if (response.success && response.data) {
-        const newSession: ChatSession = response.data;
-        setChatSessions(prev => [...prev, newSession]);
-        setNewChatUsername('');
+      const response = await chatAPI.createChatSession([newChatUsername]);
+      // Type guard to check if response is an Axios response
+      if (response && typeof response === 'object' && 'data' in response) {
+        setChatSessions([...chatSessions, response.data as ChatSession]);
       } else {
-        setError(response.error || 'Failed to create chat');
+        setChatSessions([...chatSessions, response as ChatSession]);
       }
+      setNewChatUsername('');
     } catch (err) {
-      setError('Failed to create chat');
+      setError('Failed to create chat session');
     }
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="loading">Loading chat sessions...</div>;
   }
 
   return (

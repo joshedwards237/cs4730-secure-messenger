@@ -15,11 +15,12 @@ const AccountPage: React.FC = () => {
       <h2>Account Details</h2>
       <div className="account-info">
         <p><strong>Username:</strong> {user?.username}</p>
-        <p><strong>Public Key:</strong> {user?.publicKey}</p>
+        {/* Temporarily comment out the public key display until we have it properly defined */}
+        {/* <p><strong>Public Key:</strong> {user?.publicKey}</p> */}
         {/* Don't display password for security reasons */}
       </div>
     </div>
   );
 };
 
-export default AccountPage; 
+export default AccountPage;

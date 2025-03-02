@@ -2,8 +2,7 @@ export interface User {
   id: string;
   username: string;
   email: string;
-  publicKey: string;
-  sessionId: string;
+  publicKey?: string;
 }
 
 export interface UserSession {
@@ -25,26 +24,27 @@ export interface ChatParticipant {
 export interface Message {
   id: string;
   sender: string;
+  sender_username?: string;
   content: string;
+  encrypted_content?: string;
+  encryption_method?: string;
   timestamp: string;
   isEncrypted: boolean;
 }
 
 export interface ChatSession {
-  id: string;
-  participants: User[];
-  messages: Message[];
+  id: number;
   session_id: string;
   created_at: string;
   is_active: boolean;
-  lastMessage?: Message;
-  updatedAt?: string;
+  participants: ChatParticipant[];
+  messages: Message[];
 }
 
 export interface AuthState {
   user: User | null;
-  sessionId: string | null;
-  privateKey: string | null;
+  session_id: string | null;
+  private_key: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -53,6 +53,15 @@ export interface AuthState {
 export interface EncryptionKeys {
   public_key: string;
   private_key: string;
+}
+
+export interface Chat {
+  id: string;
+  participants: User[];
+  messages: Message[];
+  lastMessage?: Message;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface LoginFormData {
@@ -65,20 +74,6 @@ export interface RegisterFormData {
   email: string;
   password: string;
   confirmPassword: string;
-}
-
-export interface LoginResponse {
-  user: User;
-  token: string;
-  session_id: string;
-  private_key?: string;
-}
-
-export interface RegisterResponse {
-  user: User;
-  token: string;
-  session_id: string;
-  private_key?: string;
 }
 
 export interface ApiResponse<T> {

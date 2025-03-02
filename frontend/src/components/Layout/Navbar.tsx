@@ -17,7 +17,12 @@ const Navbar: React.FC = () => {
     <nav className="navbar">
       <div className="navbar-brand">
         <Link to="/" className="navbar-logo">
-          <img src={logo} alt="GEM Logo" className="navbar-logo-image" />
+          <img 
+            src={logo} 
+            alt="Secure Messenger Logo" 
+            className="navbar-logo-image" 
+            title="Secure Messenger"
+          />
           <span className="navbar-title">Good Encrypted Messenger</span>
         </Link>
       </div>

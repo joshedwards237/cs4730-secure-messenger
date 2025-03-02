@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authAPI } from '../services/api';
-import { User, AuthState, LoginResponse, RegisterResponse } from '../types';
+import { AuthState } from '../types';
 import { generateKeyPair } from '../utils/encryption';
-import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<void>;
@@ -12,18 +11,27 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const initialState: AuthState = {
-  user: null,
-  sessionId: null,
-  privateKey: null,
-  isAuthenticated: false,
-  isLoading: true,
-  error: null
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [authState, setAuthState] = useState<AuthState>(initialState);
-  const navigate = useNavigate();
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    session_id: null,
+    private_key: null,
+    isAuthenticated: false,
+    isLoading: true,
+    error: null,
+  });
 
   // Check if user is already authenticated
   useEffect(() => {
@@ -39,8 +47,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (response.success && response.data && sessionId) {
           setAuthState({
             user: response.data,
-            sessionId,
-            privateKey,
+            session_id: sessionId,
+            private_key: privateKey,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -48,8 +56,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else {
           setAuthState({
             user: null,
-            sessionId: null,
-            privateKey: null,
+            session_id: null,
+            private_key: null,
             isAuthenticated: false,
             isLoading: false,
             error: null,
@@ -58,8 +66,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } catch (error) {
         setAuthState({
           user: null,
-          sessionId: null,
-          privateKey: null,
+          session_id: null,
+          private_key: null,
           isAuthenticated: false,
           isLoading: false,
           error: null,
@@ -75,29 +83,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
       
       const response = await authAPI.login(username, password);
-      if (!response.success || !response.data) {
-        throw new Error('Login failed');
+      
+      if (response.success && response.data) {
+        // Save session ID and private key to local storage
+        localStorage.setItem('session_id', response.data.session_id);
+        if (response.data.private_key) {
+          localStorage.setItem('private_key', response.data.private_key);
+        }
+        
+        setAuthState({
+          user: response.data.user,
+          session_id: response.data.session_id,
+          private_key: response.data.private_key || null,
+          isAuthenticated: true,
+          isLoading: false,
+          error: null,
+        });
+      } else {
+        setAuthState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: response.error || 'Invalid credentials',
+        }));
       }
-      
-      const data = response.data;
-      
-      // Save session ID and private key to local storage
-      localStorage.setItem('session_id', data.session_id);
-      if (data.private_key) {
-        localStorage.setItem('private_key', data.private_key);
-      }
-      
-      setAuthState({
-        user: data.user,
-        sessionId: data.session_id,
-        privateKey: data.private_key || null,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
-
-      // Redirect to account page after successful login
-      navigate('/account');
     } catch (error) {
       setAuthState((prev) => ({
         ...prev,
@@ -115,24 +123,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { publicKey, privateKey } = generateKeyPair();
       
       const response = await authAPI.register(username, password, publicKey);
-      if (!response.success || !response.data) {
-        throw new Error('Registration failed');
+      
+      if (response.success && response.data) {
+        // Save session ID and private key to local storage
+        localStorage.setItem('session_id', response.data.session_id);
+        localStorage.setItem('private_key', response.data.private_key || privateKey);
+        
+        setAuthState({
+          user: response.data.user,
+          session_id: response.data.session_id,
+          private_key: response.data.private_key || privateKey,
+          isAuthenticated: true,
+          isLoading: false,
+          error: null,
+        });
+      } else {
+        setAuthState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: response.error || 'Registration failed',
+        }));
       }
-      
-      const data = response.data as RegisterResponse;
-      
-      // Save session ID and private key to local storage
-      localStorage.setItem('session_id', data.session_id);
-      localStorage.setItem('private_key', privateKey); // Use generated private key
-      
-      setAuthState({
-        user: data.user,
-        sessionId: data.session_id,
-        privateKey: privateKey, // Use generated private key
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      });
     } catch (error) {
       setAuthState((prev) => ({
         ...prev,
@@ -144,19 +155,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     try {
-      await authAPI.logout();
+      setAuthState((prev) => ({ ...prev, isLoading: true }));
+      
+      if (authState.session_id) {
+        await authAPI.logout(authState.session_id);
+      }
+      
+      // Clear local storage
+      localStorage.removeItem('session_id');
+      localStorage.removeItem('private_key');
+      
       setAuthState({
         user: null,
-        sessionId: null,
-        privateKey: null,
+        session_id: null,
+        private_key: null,
         isAuthenticated: false,
         isLoading: false,
-        error: null
+        error: null,
       });
     } catch (error) {
-      setAuthState(prev => ({
+      setAuthState((prev) => ({
         ...prev,
-        error: 'Logout failed'
+        isLoading: false,
+        error: 'Logout failed',
       }));
     }
   };
@@ -169,12 +190,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }; 

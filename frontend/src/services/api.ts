@@ -1,14 +1,5 @@
 import axios from 'axios';
-import { 
-  LoginFormData, 
-  RegisterFormData, 
-  ApiResponse, 
-  User, 
-  Message, 
-  LoginResponse, 
-  RegisterResponse, 
-  ChatSession 
-} from '../types';
+import { ApiResponse, User, Chat, Message, ChatSession } from '../types';
 
 // Create axios instance with base URL and default headers
 const api = axios.create({
@@ -20,22 +11,31 @@ const api = axios.create({
 
 // Add request interceptor to include auth token
 api.interceptors.request.use(
-  (config) => {
+  (config: any) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Token ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error: any) => Promise.reject(error)
 );
 
 // Authentication API calls
 export const authAPI = {
-  login: async (username: string, password: string): Promise<ApiResponse<LoginResponse>> => {
+  login: async (username: string, password: string): Promise<ApiResponse<{ user: User; token: string; session_id: string; private_key?: string }>> => {
     try {
       const response = await api.post('/auth/login/', { username, password });
-      return { success: true, data: response.data };
+      const responseData = response.data as any;
+      return { 
+        success: true, 
+        data: {
+          user: responseData.user as User,
+          token: responseData.token as string,
+          session_id: responseData.session_id as string,
+          private_key: responseData.private_key as string | undefined
+        } 
+      };
     } catch (error: any) {
       return {
         success: false,
@@ -44,10 +44,19 @@ export const authAPI = {
     }
   },
 
-  register: async (username: string, password: string, publicKey: string): Promise<ApiResponse<RegisterResponse>> => {
+  register: async (username: string, password: string, publicKey?: string): Promise<ApiResponse<{ user: User; token: string; session_id: string; private_key?: string }>> => {
     try {
       const response = await api.post('/auth/register/', { username, password, public_key: publicKey });
-      return { success: true, data: response.data };
+      const responseData = response.data as any;
+      return { 
+        success: true, 
+        data: {
+          user: responseData.user as User,
+          token: responseData.token as string,
+          session_id: responseData.session_id as string,
+          private_key: responseData.private_key as string | undefined
+        } 
+      };
     } catch (error: any) {
       return {
         success: false,
@@ -56,9 +65,9 @@ export const authAPI = {
     }
   },
 
-  logout: async (): Promise<ApiResponse<null>> => {
+  logout: async (sessionId?: string): Promise<ApiResponse<null>> => {
     try {
-      await api.post('/auth/logout/');
+      await api.post('/auth/logout/', { session_id: sessionId });
       return { success: true };
     } catch (error: any) {
       return {
@@ -71,7 +80,7 @@ export const authAPI = {
   getCurrentUser: async (): Promise<ApiResponse<User>> => {
     try {
       const response = await api.get('/auth/user/');
-      return { success: true, data: response.data };
+      return { success: true, data: response.data as User };
     } catch (error: any) {
       return {
         success: false,
@@ -83,10 +92,22 @@ export const authAPI = {
 
 // Chat API calls
 export const chatAPI = {
-  getChats: async (): Promise<ApiResponse<ChatSession[]>> => {
+  getChatSessions: async (): Promise<ChatSession[]> => {
+    const response = await api.get<ChatSession[]>(`/api/chats/`);
+    return response.data;
+  },
+  getChatSession: async (chatId: number): Promise<ChatSession> => {
+    const response = await api.get<ChatSession>(`/api/chats/${chatId}/`);
+    return response.data;
+  },
+  createChatSession: async (participants: string[]): Promise<ChatSession> => {
+    const response = await api.post<ChatSession>(`/api/chats/`, { participants });
+    return response.data;
+  },
+  getChats: async (): Promise<ApiResponse<Chat[]>> => {
     try {
       const response = await api.get('/chats/');
-      return { success: true, data: response.data };
+      return { success: true, data: response.data as Chat[] };
     } catch (error: any) {
       return {
         success: false,
@@ -95,10 +116,10 @@ export const chatAPI = {
     }
   },
 
-  getChat: async (chatId: string): Promise<ApiResponse<ChatSession>> => {
+  getChat: async (chatId: string): Promise<ApiResponse<Chat>> => {
     try {
       const response = await api.get(`/chats/${chatId}/`);
-      return { success: true, data: response.data };
+      return { success: true, data: response.data as Chat };
     } catch (error: any) {
       return {
         success: false,
@@ -107,10 +128,10 @@ export const chatAPI = {
     }
   },
 
-  createChat: async (participants: string[]): Promise<ApiResponse<ChatSession>> => {
+  createChat: async (participants: string[]): Promise<ApiResponse<Chat>> => {
     try {
       const response = await api.post('/chats/', { participants });
-      return { success: true, data: response.data };
+      return { success: true, data: response.data as Chat };
     } catch (error: any) {
       return {
         success: false,
@@ -125,7 +146,7 @@ export const chatAPI = {
         content,
         is_encrypted: isEncrypted,
       });
-      return { success: true, data: response.data };
+      return { success: true, data: response.data as Message };
     } catch (error: any) {
       return {
         success: false,
@@ -137,7 +158,7 @@ export const chatAPI = {
   getMessages: async (chatId: string): Promise<ApiResponse<Message[]>> => {
     try {
       const response = await api.get(`/chats/${chatId}/messages/`);
-      return { success: true, data: response.data };
+      return { success: true, data: response.data as Message[] };
     } catch (error: any) {
       return {
         success: false,
@@ -147,4 +168,4 @@ export const chatAPI = {
   },
 };
 
-export default api; 
+export default api;

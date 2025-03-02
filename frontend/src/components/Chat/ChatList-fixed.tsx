@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { chatAPI } from '../../services/api';
 import { ChatSession } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+import axios from 'axios';
 
 const ChatList: React.FC = () => {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
@@ -14,8 +15,13 @@ const ChatList: React.FC = () => {
   useEffect(() => {
     const fetchChatSessions = async () => {
       try {
-        const sessions = await chatAPI.getChatSessions();
-        setChatSessions(sessions);
+        const response = await chatAPI.getChatSessions();
+        // Type guard to check if response is an Axios response
+        if (response && typeof response === 'object' && 'data' in response) {
+          setChatSessions(response.data as ChatSession[]);
+        } else {
+          setChatSessions(response as ChatSession[]);
+        }
         setLoading(false);
       } catch (err) {
         setError('Failed to load chat sessions');
@@ -31,8 +37,13 @@ const ChatList: React.FC = () => {
     if (!newChatUsername) return;
 
     try {
-      const newChat = await chatAPI.createChatSession([newChatUsername]);
-      setChatSessions([...chatSessions, newChat]);
+      const response = await chatAPI.createChatSession([newChatUsername]);
+      // Type guard to check if response is an Axios response
+      if (response && typeof response === 'object' && 'data' in response) {
+        setChatSessions([...chatSessions, response.data as ChatSession]);
+      } else {
+        setChatSessions([...chatSessions, response as ChatSession]);
+      }
       setNewChatUsername('');
     } catch (err) {
       setError('Failed to create chat session');
