@@ -22,11 +22,29 @@ const Register: React.FC = () => {
     await register(username, password);
   };
 
+  // Format error message for user-friendly display
+  const getErrorMessage = () => {
+    if (!error) return null;
+    
+    // Check for database setup error
+    if (error.includes('no such table') || error.includes('OperationalError')) {
+      return (
+        <div className="error-message">
+          <p>Database setup error: The backend database tables have not been created.</p>
+          <p>Please ask the administrator to run migrations with:</p>
+          <code>python manage.py migrate</code>
+        </div>
+      );
+    }
+    
+    return <div className="error-message">{error}</div>;
+  };
+
   return (
     <div className="auth-container">
       <div className="auth-card">
         <h2>Register</h2>
-        {error && <div className="error-message">{error}</div>}
+        {getErrorMessage()}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="username">Username</label>
