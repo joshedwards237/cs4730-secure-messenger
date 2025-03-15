@@ -15,12 +15,19 @@ class ChatParticipantSerializer(serializers.ModelSerializer):
 
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender_username = serializers.CharField(source='sender.username', read_only=True)
+    sender = serializers.SerializerMethodField()
     
     class Meta:
         model = Message
-        fields = ['id', 'sender_username', 'encrypted_content', 'encryption_method', 'timestamp']
+        fields = ['id', 'sender', 'content', 'is_encrypted', 'timestamp']
         read_only_fields = ['timestamp']
+    
+    def get_sender(self, obj):
+        return {
+            'id': str(obj.sender.id),
+            'username': obj.sender.username,
+            'email': obj.sender.email
+        }
 
 
 class ChatSessionSerializer(serializers.ModelSerializer):

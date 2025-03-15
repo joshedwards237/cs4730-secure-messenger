@@ -101,7 +101,7 @@ export const chatAPI = {
     return response.data;
   },
   createChatSession: async (participants: string[]): Promise<ChatSession> => {
-    const response = await api.post<ChatSession>(`/api/chats/`, { participants });
+    const response = await api.post<ChatSession>(`/api/chats/`, { participant_usernames: participants });
     return response.data;
   },
   getChats: async (): Promise<ApiResponse<Chat[]>> => {
@@ -144,9 +144,9 @@ export const chatAPI = {
     try {
       const response = await api.post(`/api/chats/${chatId}/messages/`, {
         content,
-        is_encrypted: isEncrypted,
+        is_encrypted: isEncrypted
       });
-      return { success: true, data: response.data as Message };
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,

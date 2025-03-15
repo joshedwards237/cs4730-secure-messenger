@@ -22,14 +22,12 @@ export interface ChatParticipant {
 }
 
 export interface Message {
-  id: string;
-  sender: string;
-  sender_username?: string;
+  id: number;
   content: string;
-  encrypted_content?: string;
-  encryption_method?: string;
   timestamp: string;
-  isEncrypted: boolean;
+  sender: User;
+  is_encrypted: boolean;
+  chat_session: number;
 }
 
 export interface ChatSession {

@@ -94,6 +94,39 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         except (User.DoesNotExist, ChatParticipant.DoesNotExist):
             return Response({'error': 'Participant not found'}, status=status.HTTP_404_NOT_FOUND)
 
+    @action(detail=True, methods=['get', 'post'])
+    def messages(self, request, pk=None):
+        """Handle messages for a specific chat session."""
+        chat_session = self.get_object()
+        
+        if request.method == 'GET':
+            messages = Message.objects.filter(chat_session=chat_session)
+            serializer = MessageSerializer(messages, many=True)
+            return Response(serializer.data)
+        
+        elif request.method == 'POST':
+            # Check if user is a participant
+            if not ChatParticipant.objects.filter(
+                chat_session=chat_session,
+                user=request.user,
+                is_active=True
+            ).exists():
+                return Response(
+                    {'error': 'You are not an active participant in this chat session'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Create message
+            message = Message.objects.create(
+                chat_session=chat_session,
+                sender=request.user,
+                content=request.data.get('content', ''),
+                is_encrypted=request.data.get('is_encrypted', False)
+            )
+            
+            serializer = MessageSerializer(message)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class MessageViewSet(viewsets.ModelViewSet):
     serializer_class = MessageSerializer

@@ -27,11 +27,11 @@ class ChatParticipant(models.Model):
 
 
 class Message(models.Model):
-    """A message in a chat session. Note: Messages are only stored temporarily in memory."""
+    """A message in a chat session."""
     chat_session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    encrypted_content = models.TextField()  # Encrypted message content
-    encryption_method = models.CharField(max_length=50)  # AES, RSA, etc.
+    content = models.TextField()  # Message content
+    is_encrypted = models.BooleanField(default=False)  # Whether the content is encrypted
     timestamp = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
