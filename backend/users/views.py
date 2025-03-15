@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate, login, logout
 from .models import CustomUser, UserSession
 from .serializers import UserSerializer, UserRegistrationSerializer, UserSessionSerializer
@@ -29,12 +30,16 @@ class AuthViewSet(viewsets.ViewSet):
         if user:
             login(request, user)
             
+            # Create or get token
+            token, _ = Token.objects.get_or_create(user=user)
+            
             # Create a session
             session_id = str(uuid.uuid4())
             UserSession.objects.create(user=user, session_id=session_id)
             
             return Response({
                 'user': UserSerializer(user).data,
+                'token': token.key,
                 'session_id': session_id
             })
         
@@ -59,12 +64,16 @@ class AuthViewSet(viewsets.ViewSet):
             user = serializer.save()
             login(request, user)
             
+            # Create token
+            token = Token.objects.create(user=user)
+            
             # Create a session
             session_id = str(uuid.uuid4())
             UserSession.objects.create(user=user, session_id=session_id)
             
             response_data = {
                 'user': UserSerializer(user).data,
+                'token': token.key,
                 'session_id': session_id
             }
             
@@ -87,6 +96,10 @@ class AuthViewSet(viewsets.ViewSet):
                     session.save()
                 except UserSession.DoesNotExist:
                     pass
+            
+            # Delete the user's token
+            Token.objects.filter(user=request.user).delete()
+            
             logout(request)
         return Response({'success': 'Logged out successfully'})
 

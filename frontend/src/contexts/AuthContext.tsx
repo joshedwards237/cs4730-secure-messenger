@@ -85,7 +85,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authAPI.login(username, password);
       
       if (response.success && response.data) {
-        // Save session ID and private key to local storage
+        // Save token and session ID to local storage
+        localStorage.setItem('token', response.data.token);
         localStorage.setItem('session_id', response.data.session_id);
         if (response.data.private_key) {
           localStorage.setItem('private_key', response.data.private_key);
@@ -125,7 +126,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authAPI.register(username, password, publicKey);
       
       if (response.success && response.data) {
-        // Save session ID and private key to local storage
+        // Save token and session ID to local storage
+        localStorage.setItem('token', response.data.token);
         localStorage.setItem('session_id', response.data.session_id);
         localStorage.setItem('private_key', response.data.private_key || privateKey);
         
@@ -162,6 +164,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
       
       // Clear local storage
+      localStorage.removeItem('token');
       localStorage.removeItem('session_id');
       localStorage.removeItem('private_key');
       
