@@ -4,7 +4,7 @@ import { AuthState } from '../types';
 import { generateKeyPair } from '../utils/encryption';
 
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<boolean>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string): Promise<boolean> => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
       
@@ -100,12 +100,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           isLoading: false,
           error: null,
         });
+        return true;
       } else {
         setAuthState((prev) => ({
           ...prev,
           isLoading: false,
           error: response.error || 'Invalid credentials',
         }));
+        return false;
       }
     } catch (error) {
       setAuthState((prev) => ({
@@ -113,6 +115,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isLoading: false,
         error: 'Invalid credentials',
       }));
+      return false;
     }
   };
 
