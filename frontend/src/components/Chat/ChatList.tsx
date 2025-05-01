@@ -34,20 +34,29 @@ const ChatList: React.FC = () => {
   const handleCreateChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newChatUsername) return;
-
+  
     try {
+      const userExists = await chatAPI.checkUserExists(newChatUsername);
+      if (!userExists) {
+        setError('User does not exist');
+        return; 
+      }
+  
       const response = await chatAPI.createChatSession([newChatUsername]);
-      // Type guard to check if response is an Axios response
+  
       if (response && typeof response === 'object' && 'data' in response) {
         setChatSessions([...chatSessions, response.data as ChatSession]);
       } else {
         setChatSessions([...chatSessions, response as ChatSession]);
       }
+  
       setNewChatUsername('');
+      setError(null);
     } catch (err) {
       setError('Failed to create chat session');
     }
   };
+  
 
   if (loading) {
     return <div className="loading">Loading chat sessions...</div>;

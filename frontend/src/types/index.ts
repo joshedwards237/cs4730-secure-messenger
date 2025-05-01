@@ -19,17 +19,22 @@ export interface ChatParticipant {
   username: string;
   joined_at: string;
   is_active: boolean;
+  public_key: string;
 }
 
 export interface Message {
   id: number;
-  content: string;
-  timestamp: string;
-  sender: User;
+  encrypted_content: string;
+  encryption_method: string;
   is_encrypted: boolean;
-  chat_session: number;
+  timestamp: string;
+  sender: {
+    id: string;
+    username: string;
+    email: string;
+  };
+  content?: string;  // Decrypted version for frontend display
 }
-
 export interface ChatSession {
   id: number;
   session_id: string;

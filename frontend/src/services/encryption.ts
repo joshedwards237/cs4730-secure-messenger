@@ -1,86 +1,37 @@
-import CryptoJS from 'crypto-js';
+import { JSEncrypt } from 'jsencrypt';
 
-/**
- * Encryption service for handling message encryption and decryption
- */
-export const encryptionService = {
-  /**
-   * Generate a random encryption key
-   * @returns A random encryption key
-   */
-  generateKey(): string {
-    return CryptoJS.lib.WordArray.random(16).toString();
-  },
+export function generateKeyPair(): { publicKey: string; privateKey: string } {
+  const crypt = new JSEncrypt();
+  (crypt as any).default_key_size = "2048";
+  crypt.getKey();
+  return {
+    publicKey: crypt.getPublicKey(),
+    privateKey: crypt.getPrivateKey(),
+  };
+}
 
-  /**
-   * Encrypt a message using AES encryption
-   * @param message The message to encrypt
-   * @param key The encryption key
-   * @returns The encrypted message
-   */
-  encryptMessage(message: string, key: string): string {
-    return CryptoJS.AES.encrypt(message, key).toString();
-  },
+export function encryptWithPublicKey(message: string, publicKey: string): string {
+  const crypt = new JSEncrypt();
+  crypt.setPublicKey(publicKey);
 
-  /**
-   * Decrypt a message using AES encryption
-   * @param encryptedMessage The encrypted message
-   * @param key The encryption key
-   * @returns The decrypted message
-   */
-  decryptMessage(encryptedMessage: string, key: string): string {
-    const bytes = CryptoJS.AES.decrypt(encryptedMessage, key);
-    return bytes.toString(CryptoJS.enc.Utf8);
-  },
-
-  /**
-   * Generate a key pair for asymmetric encryption
-   * @returns An object containing the public and private keys
-   */
-  generateKeyPair(): { publicKey: string; privateKey: string } {
-    // In a real application, you would use a proper asymmetric encryption library
-    // This is a simplified example using symmetric encryption for demonstration
-    const privateKey = this.generateKey();
-    const publicKey = CryptoJS.SHA256(privateKey).toString();
-    
-    return {
-      publicKey,
-      privateKey,
-    };
-  },
-
-  /**
-   * Store encryption keys securely in local storage
-   * @param keys The keys to store
-   */
-  storeKeys(keys: { publicKey: string; privateKey: string }): void {
-    localStorage.setItem('publicKey', keys.publicKey);
-    // In a real application, you would use a more secure storage method for the private key
-    localStorage.setItem('privateKey', keys.privateKey);
-  },
-
-  /**
-   * Retrieve encryption keys from local storage
-   * @returns The stored keys or null if not found
-   */
-  getStoredKeys(): { publicKey: string; privateKey: string } | null {
-    const publicKey = localStorage.getItem('publicKey');
-    const privateKey = localStorage.getItem('privateKey');
-    
-    if (publicKey && privateKey) {
-      return { publicKey, privateKey };
-    }
-    
-    return null;
-  },
-
-  /**
-   * Clear stored encryption keys
-   */
-  clearKeys(): void {
-    localStorage.removeItem('publicKey');
-    localStorage.removeItem('privateKey');
+  const encrypted = crypt.encrypt(message);
+  if (!encrypted) {
+    console.error("❌ Encryption failed.");
+    throw new Error("Encryption failed");
   }
-};
 
-export default encryptionService; 
+  return encrypted;
+}
+
+export function decryptWithPrivateKey(ciphertext: string, privateKey: string): string {
+  const crypt = new JSEncrypt();
+  crypt.setPrivateKey(privateKey);
+
+  const decrypted = crypt.decrypt(ciphertext);
+  if (!decrypted) {
+    console.error("❌ Decryption failed.");
+    throw new Error("Decryption failed");
+  }
+
+  return decrypted;
+}

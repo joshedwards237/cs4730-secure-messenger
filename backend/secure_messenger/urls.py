@@ -40,4 +40,6 @@ urlpatterns = [
     
     # Redirect root URL to API root
     path('', RedirectView.as_view(url='/api/', permanent=False)),
+
+    path('api/users/', include('users.urls')),
 ]

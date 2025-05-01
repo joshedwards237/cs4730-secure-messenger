@@ -29,26 +29,36 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
         return ChatSessionSerializer
     
     def create(self, request):
-        """Create a new chat session."""
+        """Create a new chat session with participant validation."""
         # Generate a session ID if not provided
         if 'session_id' not in request.data:
             request.data['session_id'] = str(uuid.uuid4())
-        
+
         # Add the current user to participants if not already included
         if 'participant_usernames' not in request.data:
             request.data['participant_usernames'] = []
-        
+
         if request.user.username not in request.data['participant_usernames']:
             request.data['participant_usernames'].append(request.user.username)
-        
+
+        # ✅ Check all participant usernames exist
+        usernames = request.data['participant_usernames']
+        found_users = User.objects.filter(username__in=usernames)
+        if found_users.count() != len(usernames):
+            return Response(
+                {'error': 'One or more users do not exist'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         chat_session = serializer.save()
-        
+
         return Response(
             ChatSessionSerializer(chat_session).data,
             status=status.HTTP_201_CREATED
         )
+
     
     @action(detail=True, methods=['post'])
     def add_participant(self, request, pk=None):
@@ -120,7 +130,8 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             message = Message.objects.create(
                 chat_session=chat_session,
                 sender=request.user,
-                content=request.data.get('content', ''),
+                encrypted_content=request.data.get('encrypted_content', ''),
+                encryption_method=request.data.get('encryption_method', 'RSA'),
                 is_encrypted=request.data.get('is_encrypted', False)
             )
             
@@ -165,8 +176,9 @@ class MessageViewSet(viewsets.ModelViewSet):
                 chat_session=chat_session,
                 sender=request.user,
                 encrypted_content=request.data.get('encrypted_content', ''),
-                encryption_method=request.data.get('encryption_method', 'AES')
-            )
+                encryption_method=request.data.get('encryption_method', 'RSA'),
+                is_encrypted=True
+)
             
             return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
         

@@ -1,10 +1,10 @@
 from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.authtoken.models import Token
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_user_model
 from .models import CustomUser, UserSession
 from .serializers import UserSerializer, UserRegistrationSerializer, UserSessionSerializer
 import uuid
@@ -119,4 +119,12 @@ class UserSessionViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        return UserSession.objects.filter(user=self.request.user) 
+        return UserSession.objects.filter(user=self.request.user)
+    
+
+User = get_user_model()
+
+@api_view(['GET'])
+def check_user_exists(request, username):
+    exists = User.objects.filter(username=username).exists()
+    return Response({ "exists": exists }, status=status.HTTP_200_OK)

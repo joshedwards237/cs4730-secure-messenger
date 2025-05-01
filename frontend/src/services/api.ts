@@ -143,7 +143,8 @@ export const chatAPI = {
   sendMessage: async (chatId: string, content: string, isEncrypted: boolean): Promise<ApiResponse<Message>> => {
     try {
       const response = await api.post(`/api/chats/${chatId}/messages/`, {
-        content,
+        encrypted_content: content,
+        encryption_method: "RSA",
         is_encrypted: isEncrypted
       });
       return { success: true, data: response.data };
@@ -166,6 +167,23 @@ export const chatAPI = {
       };
     }
   },
+
+  checkUserExists: async (username: string): Promise<boolean> => {
+    try {
+      const response = await api.get(`/api/users/exists/${username}/`);
+      return response.data.exists;
+    } catch {
+      return false;
+    }
+  }
 };
 
+checkUserExists: async (username: string): Promise<boolean> => {
+  try {
+    const response = await api.get(`/api/users/exists/${username}/`);
+    return response.data.exists;
+  } catch {
+    return false;
+  }
+}
 export default api;

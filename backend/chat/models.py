@@ -30,7 +30,8 @@ class Message(models.Model):
     """A message in a chat session."""
     chat_session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    content = models.TextField()  # Message content
+    encrypted_content = models.TextField()  # Message content
+    encryption_method = models.CharField(max_length=20, default='AES')  # Encryption method used
     is_encrypted = models.BooleanField(default=False)  # Whether the content is encrypted
     timestamp = models.DateTimeField(auto_now_add=True)
     

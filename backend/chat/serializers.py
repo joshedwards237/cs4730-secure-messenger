@@ -7,10 +7,11 @@ User = get_user_model()
 
 class ChatParticipantSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
+    public_key = serializers.CharField(source='user.public_key', read_only=True)
     
     class Meta:
         model = ChatParticipant
-        fields = ['id', 'username', 'joined_at', 'is_active']
+        fields = ['id', 'username', 'joined_at', 'public_key', 'is_active']
         read_only_fields = ['joined_at']
 
 
@@ -19,7 +20,7 @@ class MessageSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'content', 'is_encrypted', 'timestamp']
+        fields = ['id', 'sender', 'encrypted_content', 'encryption_method', 'is_encrypted', 'timestamp']
         read_only_fields = ['timestamp']
     
     def get_sender(self, obj):

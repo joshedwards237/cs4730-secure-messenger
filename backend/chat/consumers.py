@@ -63,7 +63,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
         if message_type == 'message':
             encrypted_content = data.get('encrypted_content', '')
-            encryption_method = data.get('encryption_method', 'AES')
+            encryption_method = data.get('encryption_method', 'RSA')
             
             # Save message to database
             message = await self.save_message(
@@ -149,6 +149,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             chat_session=chat_session,
             sender=user,
             encrypted_content=encrypted_content,
-            encryption_method=encryption_method
+            encryption_method=encryption_method,
+            is_encrypted=True 
         )
         return message 

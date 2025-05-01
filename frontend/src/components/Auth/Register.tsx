@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -8,6 +8,8 @@ const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const { register, isLoading, error } = useAuth();
+
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +21,10 @@ const Register: React.FC = () => {
     }
     
     setPasswordError('');
-    await register(username, password);
+    const success = await register(username, password);
+    if (success) {
+      navigate('/login');
+    }
   };
 
   // Format error message for user-friendly display
