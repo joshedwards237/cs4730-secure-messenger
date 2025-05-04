@@ -88,10 +88,28 @@ input:focus {
 }
 
 /* App Layout */
-.app-container {
+.App {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding-bottom: 3rem; /* Space for footer */
+}
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  text-align: center;
+  color: #6c757d;
+  font-size: 0.875rem;
 }
 
 .app-header {
@@ -292,9 +310,10 @@ input:focus {
 }
 
 .message-sender {
-  font-size: 12px;
-  margin-top: 5px;
-  opacity: 0.8;
+  font-size: 1rem;
+  margin-top: 4px;
+  color: #ffffff;
+  margin-right: 5px;
 }
 
 .no-messages {

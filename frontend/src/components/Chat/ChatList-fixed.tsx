@@ -50,6 +50,21 @@ const ChatList: React.FC = () => {
     }
   };
 
+  const handleDeleteChat = async (chatId: number) => {
+    if (window.confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
+      try {
+        const success = await chatAPI.deleteChatSession(chatId);
+        if (success) {
+          setChatSessions(chatSessions.filter(session => session.id !== chatId));
+        } else {
+          setError('Failed to delete chat session');
+        }
+      } catch (err) {
+        setError('Failed to delete chat session');
+      }
+    }
+  };
+
   if (loading) {
     return <div className="loading">Loading chat sessions...</div>;
   }
@@ -87,14 +102,16 @@ const ChatList: React.FC = () => {
                     Created: {new Date(session.created_at).toLocaleString()}
                   </p>
                 </div>
-                <div className="chat-session-status">
-                  {session.is_active ? (
-                    <span className="status-active">Active</span>
-                  ) : (
-                    <span className="status-inactive">Inactive</span>
-                  )}
-                </div>
               </Link>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleDeleteChat(session.id);
+                }}
+                className="btn-delete"
+              >
+                Delete
+              </button>
             </div>
           ))
         )}

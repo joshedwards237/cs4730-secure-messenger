@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { chatAPI } from '../../services/api';
 import { ChatSession, Message } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
@@ -21,6 +21,7 @@ const ChatRoom: React.FC = () => {
   const { user, private_key } = useAuth();
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const navigate = useNavigate();
 
   // Fetch chat session and messages
   useEffect(() => {
@@ -244,6 +245,23 @@ const ChatRoom: React.FC = () => {
     }
   };
 
+  const handleDeleteChat = async () => {
+    if (!chatSession) return;
+    
+    if (window.confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
+      try {
+        const success = await chatAPI.deleteChatSession(chatSession.id);
+        if (success) {
+          navigate('/chats');
+        } else {
+          setError('Failed to delete chat session');
+        }
+      } catch (err) {
+        setError('Failed to delete chat session');
+      }
+    }
+  };
+
   return (
     <div className="chat-room">
       {loading ? (
@@ -253,14 +271,19 @@ const ChatRoom: React.FC = () => {
       ) : (
         <div className="chat-container">
           <div className="chat-header">
-            <h2>{chatSession?.name || 'Chat Room'}</h2>
-            <div className="participants">
-              {chatSession?.participants.map((p) => (
-                <span key={p.id} className="participant">
-                  {p.username}
-                </span>
-              ))}
+            <div className="chat-header-left">
+              <h2>{chatSession?.name || 'Chat Room'}</h2>
+              <div className="participants">
+                {chatSession?.participants.map((p) => (
+                  <span key={p.id} className="participant">
+                    {p.username}
+                  </span>
+                ))}
+              </div>
             </div>
+            <button onClick={handleDeleteChat} className="btn-delete">
+              Delete Chat
+            </button>
           </div>
           
           <div className="messages-container">
@@ -269,8 +292,7 @@ const ChatRoom: React.FC = () => {
                 key={message.id}
                 className={`message ${message.sender.username === user?.username ? 'sent' : 'received'}`}
               >
-                <div className="message-header">
-                  <span className="sender">{message.sender.username}</span>
+                <div className="message-header">             
                   <span className="timestamp">
                     {new Date(message.timestamp).toLocaleString()}
                   </span>
