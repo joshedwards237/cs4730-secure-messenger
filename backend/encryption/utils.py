@@ -4,6 +4,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
+import json
 
 
 def generate_key_pair():
@@ -100,29 +101,50 @@ def encrypt_with_aes(key, message):
     encrypted_message = encryptor.update(padded_message) + encryptor.finalize()
     
     # Return IV and encrypted message
-    result = base64.b64encode(iv + encrypted_message).decode('utf-8')
-    return result
+    return {
+        'iv': base64.b64encode(iv).decode('utf-8'),
+        'content': base64.b64encode(encrypted_message).decode('utf-8')
+    }
 
 
-def decrypt_with_aes(key, encrypted_data):
+def decrypt_with_aes(key, iv, encrypted_content):
     """Decrypt a message using AES symmetric encryption."""
-    encrypted_bytes = base64.b64decode(encrypted_data.encode('utf-8'))
-    
-    # Extract IV (first 16 bytes)
-    iv = encrypted_bytes[:16]
-    encrypted_message = encrypted_bytes[16:]
+    iv_bytes = base64.b64decode(iv.encode('utf-8'))
+    encrypted_bytes = base64.b64decode(encrypted_content.encode('utf-8'))
     
     cipher = Cipher(
         algorithms.AES(key),
-        modes.CBC(iv),
+        modes.CBC(iv_bytes),
         backend=default_backend()
     )
     
     decryptor = cipher.decryptor()
-    decrypted_padded = decryptor.update(encrypted_message) + decryptor.finalize()
+    decrypted_padded = decryptor.update(encrypted_bytes) + decryptor.finalize()
     
     # Remove padding
     padding_length = decrypted_padded[-1]
     decrypted = decrypted_padded[:-padding_length]
     
-    return decrypted.decode('utf-8') 
+    return decrypted.decode('utf-8')
+
+
+def encrypt_message_for_participants(message, participants_public_keys):
+    """Encrypt a message for multiple participants using their public keys."""
+    # Generate a new AES key for this message
+    aes_key = generate_aes_key()
+    
+    # Encrypt the message with AES
+    encrypted_data = encrypt_with_aes(aes_key, message)
+    
+    # Encrypt the AES key for each participant
+    encrypted_keys = {}
+    for username, public_key in participants_public_keys.items():
+        # Convert AES key to string for encryption
+        key_str = base64.b64encode(aes_key).decode('utf-8')
+        encrypted_keys[username] = encrypt_with_public_key(public_key, key_str)
+    
+    return {
+        'encrypted_content': encrypted_data['content'],
+        'iv': encrypted_data['iv'],
+        'encrypted_keys': encrypted_keys
+    }

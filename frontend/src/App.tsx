@@ -3,8 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
-import ChatList from './components/Chat/ChatList';
-import ChatRoom from './components/Chat/ChatRoom';
+import ChatList from './components/Chat/ChatList-fixed';
+import ChatRoom from './components/Chat/ChatRoom-fixed';
 import Navbar from './components/Layout/Navbar';
 import './App.css';
 

@@ -3,8 +3,17 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from .models import ChatSession, ChatParticipant, Message
+from encryption.utils import (
+    encrypt_message_for_participants,
+    decrypt_with_private_key,
+    decrypt_with_aes
+)
+import logging
+import base64
 
 User = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -62,16 +71,40 @@ class ChatConsumer(AsyncWebsocketConsumer):
         message_type = data.get('type', 'message')
         
         if message_type == 'message':
-            encrypted_content = data.get('encrypted_content', '')
-            encryption_method = data.get('encryption_method', 'AES')
+            content = data.get('content', '')
+            
+            # Get all active participants and their public keys
+            participants = await self.get_participants(self.chat_session_id)
+            participants_public_keys = {
+                participant.user.username: participant.user.public_key
+                for participant in participants
+            }
+            
+            # Encrypt the message for all participants
+            encrypted_data = encrypt_message_for_participants(content, participants_public_keys)
+            
+            # Log encryption details
+            logger.info(f"WebSocket message encryption details:")
+            logger.info(f"Original content: {content}")
+            logger.info(f"Encrypted content: {encrypted_data['encrypted_content']}")
+            logger.info(f"IV: {encrypted_data['iv']}")
+            logger.info(f"Encrypted keys: {json.dumps(encrypted_data['encrypted_keys'], indent=2)}")
             
             # Save message to database
             message = await self.save_message(
                 self.scope['user'],
                 self.chat_session_id,
-                encrypted_content,
-                encryption_method
+                encrypted_data['encrypted_content'],
+                encrypted_data['encrypted_keys'][self.scope['user'].username],
+                encrypted_data['iv']
             )
+            
+            # Log message details
+            logger.info(f"WebSocket message created:")
+            logger.info(f"Message ID: {message.id}")
+            logger.info(f"Chat Session: {self.chat_session_id}")
+            logger.info(f"Sender: {self.scope['user'].username}")
+            logger.info(f"Content: {encrypted_data['encrypted_content']}")
             
             # Send message to room group
             await self.channel_layer.group_send(
@@ -80,8 +113,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'type': 'chat_message',
                     'message_id': message.id,
                     'sender_username': self.scope['user'].username,
-                    'encrypted_content': encrypted_content,
-                    'encryption_method': encryption_method,
+                    'content': encrypted_data['encrypted_content'],
+                    'encryption_key': encrypted_data['encrypted_keys'],
+                    'iv': encrypted_data['iv'],
                     'timestamp': message.timestamp.isoformat()
                 }
             )
@@ -98,13 +132,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
     
     async def chat_message(self, event):
+        # Get the encrypted key for the current user
+        user_key = event['encryption_key'].get(self.scope['user'].username)
+        if not user_key:
+            logger.error(f"No encryption key found for user {self.scope['user'].username}")
+            return
+        
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
             'type': 'message',
             'message_id': event['message_id'],
             'sender_username': event['sender_username'],
-            'encrypted_content': event['encrypted_content'],
-            'encryption_method': event['encryption_method'],
+            'content': event['content'],
+            'encryption_key': user_key,
+            'iv': event['iv'],
             'timestamp': event['timestamp']
         }))
     
@@ -143,12 +184,21 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return False
     
     @database_sync_to_async
-    def save_message(self, user, chat_session_id, encrypted_content, encryption_method):
+    def get_participants(self, chat_session_id):
+        chat_session = ChatSession.objects.get(id=chat_session_id)
+        return list(ChatParticipant.objects.filter(
+            chat_session=chat_session,
+            is_active=True
+        ).select_related('user'))
+    
+    @database_sync_to_async
+    def save_message(self, user, chat_session_id, encrypted_content, encryption_key, iv):
         chat_session = ChatSession.objects.get(id=chat_session_id)
         message = Message.objects.create(
             chat_session=chat_session,
             sender=user,
-            encrypted_content=encrypted_content,
-            encryption_method=encryption_method
+            content=encrypted_content,
+            encryption_key=encryption_key,
+            iv=iv
         )
-        return message 
+        return message

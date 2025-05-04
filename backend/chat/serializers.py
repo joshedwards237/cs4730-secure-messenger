@@ -19,7 +19,7 @@ class MessageSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'content', 'is_encrypted', 'timestamp']
+        fields = ['id', 'sender', 'content', 'encryption_key', 'encrypted_keys', 'iv', 'timestamp']
         read_only_fields = ['timestamp']
     
     def get_sender(self, obj):

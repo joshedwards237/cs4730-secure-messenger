@@ -8,7 +8,17 @@ from .serializers import (
     CreateChatSessionSerializer, 
     MessageSerializer
 )
+from encryption.utils import (
+    encrypt_message_for_participants,
+    decrypt_with_private_key,
+    decrypt_with_aes
+)
 import uuid
+import logging
+import json
+import base64
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -18,15 +28,36 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     def get_queryset(self):
-        """Get chat sessions where the user is a participant."""
+        """Get chat sessions where the user is an active participant."""
         user = self.request.user
-        participant_sessions = ChatParticipant.objects.filter(user=user).values_list('chat_session', flat=True)
-        return ChatSession.objects.filter(id__in=participant_sessions)
+        active_participant_sessions = ChatParticipant.objects.filter(
+            user=user,
+            is_active=True
+        ).values_list('chat_session', flat=True)
+        return ChatSession.objects.filter(id__in=active_participant_sessions)
     
     def get_serializer_class(self):
         if self.action == 'create':
             return CreateChatSessionSerializer
         return ChatSessionSerializer
+    
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete a chat session for the current user."""
+        chat_session = self.get_object()
+        
+        # Check if user is a participant
+        try:
+            participant = ChatParticipant.objects.get(chat_session=chat_session, user=request.user)
+            # Set the participant's is_active to False instead of deleting the chat
+            participant.is_active = False
+            participant.save()
+            
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ChatParticipant.DoesNotExist:
+            return Response(
+                {'error': 'You are not a participant in this chat session'},
+                status=status.HTTP_403_FORBIDDEN
+            )
     
     def create(self, request):
         """Create a new chat session."""
@@ -116,12 +147,38 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN
                 )
             
-            # Create message
+            # Get all active participants and their public keys
+            participants = ChatParticipant.objects.filter(
+                chat_session=chat_session,
+                is_active=True
+            ).select_related('user')
+            
+            participants_public_keys = {
+                participant.user.username: participant.user.public_key
+                for participant in participants
+            }
+            
+            # Encrypt the message for all participants
+            encrypted_data = encrypt_message_for_participants(
+                request.data.get('content', ''),
+                participants_public_keys
+            )
+            
+            # Log encryption details
+            print(f"Message encryption details:")
+            print(f"Original content: {request.data.get('content', '')}")
+            print(f"Encrypted content: {encrypted_data['encrypted_content']}")
+            print(f"IV: {encrypted_data['iv']}")
+            print(f"Encrypted keys: {json.dumps(encrypted_data['encrypted_keys'], indent=2)}")
+            
+            # Create encrypted message
             message = Message.objects.create(
                 chat_session=chat_session,
                 sender=request.user,
-                content=request.data.get('content', ''),
-                is_encrypted=request.data.get('is_encrypted', False)
+                content=encrypted_data['encrypted_content'],
+                encryption_key=encrypted_data['encrypted_keys'][request.user.username],
+                encrypted_keys=encrypted_data['encrypted_keys'],
+                iv=encrypted_data['iv']
             )
             
             serializer = MessageSerializer(message)
@@ -160,15 +217,80 @@ class MessageViewSet(viewsets.ModelViewSet):
                 return Response({'error': 'You are not an active participant in this chat session'}, 
                                 status=status.HTTP_403_FORBIDDEN)
             
-            # Create message
+            # Get the message content
+            content = request.data.get('content', '')
+            
+            # Get all active participants and their public keys
+            participants = ChatParticipant.objects.filter(
+                chat_session=chat_session,
+                is_active=True
+            ).select_related('user')
+            
+            participants_public_keys = {
+                participant.user.username: participant.user.public_key
+                for participant in participants
+            }
+            
+            # Encrypt the message for all participants
+            encrypted_data = encrypt_message_for_participants(content, participants_public_keys)
+            
+            # Log encryption details
+            logger.info(f"Message encryption details:")
+            logger.info(f"Original content: {content}")
+            logger.info(f"Encrypted content: {encrypted_data['encrypted_content']}")
+            logger.info(f"IV: {encrypted_data['iv']}")
+            logger.info(f"Encrypted keys: {json.dumps(encrypted_data['encrypted_keys'], indent=2)}")
+            
+            # Create encrypted message
             message = Message.objects.create(
                 chat_session=chat_session,
                 sender=request.user,
-                encrypted_content=request.data.get('encrypted_content', ''),
-                encryption_method=request.data.get('encryption_method', 'AES')
+                content=encrypted_data['encrypted_content'],
+                encryption_key=encrypted_data['encrypted_keys'][request.user.username],
+                encrypted_keys=encrypted_data['encrypted_keys'],
+                iv=encrypted_data['iv']
             )
+            
+            # Log message creation
+            logger.info(f"Message created:")
+            logger.info(f"Message ID: {message.id}")
+            logger.info(f"Chat Session: {chat_session.id}")
+            logger.info(f"Sender: {request.user.username}")
+            logger.info(f"Content: {message.content}")
             
             return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
         
         except ChatSession.DoesNotExist:
-            return Response({'error': 'Chat session not found'}, status=status.HTTP_404_NOT_FOUND) 
+            return Response({'error': 'Chat session not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve and decrypt a message."""
+        message = self.get_object()
+        
+        # Decrypt the AES key using the user's private key
+        try:
+            aes_key_str = decrypt_with_private_key(
+                request.user.private_key,
+                message.encryption_key
+            )
+            aes_key = base64.b64decode(aes_key_str)
+            
+            # Decrypt the message content
+            decrypted_content = decrypt_with_aes(
+                aes_key,
+                message.iv,
+                message.content
+            )
+            
+            # Add decrypted content to the response
+            response_data = MessageSerializer(message).data
+            response_data['decrypted_content'] = decrypted_content
+            
+            return Response(response_data)
+            
+        except Exception as e:
+            logger.error(f"Failed to decrypt message: {str(e)}")
+            return Response(
+                {'error': 'Failed to decrypt message'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

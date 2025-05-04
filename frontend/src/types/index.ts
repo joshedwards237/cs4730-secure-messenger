@@ -26,14 +26,19 @@ export interface Message {
   content: string;
   timestamp: string;
   sender: User;
-  is_encrypted: boolean;
   chat_session: number;
+  encryption_key?: string;
+  encrypted_keys?: { [username: string]: string };
+  iv?: string;
+  decrypted?: boolean;
 }
 
 export interface ChatSession {
   id: number;
+  name: string;
   session_id: string;
   created_at: string;
+  updated_at: string;
   is_active: boolean;
   participants: ChatParticipant[];
   messages: Message[];

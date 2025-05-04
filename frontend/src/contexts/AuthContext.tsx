@@ -124,7 +124,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
       
       // Generate key pair
-      const { publicKey, privateKey } = generateKeyPair();
+      const keyPair = await generateKeyPair();
+      const { publicKey, privateKey } = keyPair;
       
       const response = await authAPI.register(username, password, publicKey);
       

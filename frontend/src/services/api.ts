@@ -104,6 +104,15 @@ export const chatAPI = {
     const response = await api.post<ChatSession>(`/api/chats/`, { participant_usernames: participants });
     return response.data;
   },
+  deleteChatSession: async (chatId: number): Promise<boolean> => {
+    try {
+      await api.delete(`/api/chats/${chatId}/`);
+      return true;
+    } catch (error) {
+      console.error('Failed to delete chat session:', error);
+      return false;
+    }
+  },
   getChats: async (): Promise<ApiResponse<Chat[]>> => {
     try {
       const response = await api.get('/api/chats/');

@@ -187,6 +187,9 @@ input:focus {
 .chat-session-item {
   border-bottom: 1px solid var(--light-gray);
   padding: 15px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .chat-session-item:last-child {
@@ -194,6 +197,7 @@ input:focus {
 }
 
 .chat-session-link {
+  flex: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -216,16 +220,6 @@ input:focus {
   font-size: 14px;
 }
 
-.status-active {
-  color: var(--success-color);
-  font-size: 14px;
-}
-
-.status-inactive {
-  color: var(--error-color);
-  font-size: 14px;
-}
-
 /* Chat Room */
 .chat-room-container {
   display: flex;
@@ -238,9 +232,16 @@ input:focus {
 
 .chat-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
+  padding: 15px;
+  background-color: white;
   border-bottom: 1px solid var(--light-gray);
+}
+
+.chat-header h2 {
+  margin: 0;
+  color: var(--primary-color);
 }
 
 .back-button {
@@ -339,4 +340,19 @@ input:focus {
     margin-bottom: 10px;
     margin-right: 0;
   }
-} 
+}
+
+.btn-danger {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+  background-color: #c0392b;
+}
