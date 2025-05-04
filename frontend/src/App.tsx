@@ -5,6 +5,7 @@ import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import ChatList from './components/Chat/ChatList-fixed';
 import ChatRoom from './components/Chat/ChatRoom-fixed';
+import ProfilePage from './components/Profile/ProfilePage';
 import Navbar from './components/Layout/Navbar';
 import './App.css';
 
@@ -49,6 +50,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <ChatRoom />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />

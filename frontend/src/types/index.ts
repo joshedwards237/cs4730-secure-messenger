@@ -1,8 +1,13 @@
 export interface User {
-  id: string;
+  id: number;
   username: string;
-  email: string;
-  publicKey?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  public_key?: string;
+  private_key?: string;
+  date_joined?: string;
+  last_login?: string;
 }
 
 export interface UserSession {

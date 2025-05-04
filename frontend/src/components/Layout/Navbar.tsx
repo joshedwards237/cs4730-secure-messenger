@@ -30,14 +30,11 @@ const Navbar: React.FC = () => {
       <div className="navbar-menu">
         {isAuthenticated ? (
           <>
-            <Link to="/friends" className="navbar-item">
-              Friends
-            </Link>
             <Link to="/chats" className="navbar-item">
               Messages
             </Link>
             <div className="navbar-end">
-              <Link to="/account" className="navbar-item">
+              <Link to="/profile" className="navbar-item">
                 {user?.username}
               </Link>
               <button onClick={handleLogout} className="navbar-button logout-button">

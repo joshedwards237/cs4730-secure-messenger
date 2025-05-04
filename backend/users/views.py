@@ -37,11 +37,26 @@ class AuthViewSet(viewsets.ViewSet):
             session_id = str(uuid.uuid4())
             UserSession.objects.create(user=user, session_id=session_id)
             
-            return Response({
-                'user': UserSerializer(user).data,
+            # Get the user's private key
+            private_key = user.private_key
+            print(f"Login: User {username} private key length: {len(private_key) if private_key else 0}")
+            
+            # Serialize user data
+            user_data = UserSerializer(user).data
+            
+            response_data = {
+                'user': user_data,
                 'token': token.key,
                 'session_id': session_id
-            })
+            }
+            
+            if private_key:
+                response_data['private_key'] = private_key
+                print(f"Login: Private key included in response for user {username}")
+            else:
+                print(f"Login: No private key found for user {username}")
+            
+            return Response(response_data)
         
         return Response(
             {'error': 'Invalid credentials'}, 
@@ -51,25 +66,44 @@ class AuthViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def register(self, request):
         """Register a new user."""
+        print(f"Register: Starting registration process for username: {request.data.get('username')}")
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            # Generate key pair if not provided
-            if 'public_key' not in request.data:
-                key_pair = generate_key_pair()
-                serializer.validated_data['public_key'] = key_pair['public_key']
-                private_key = key_pair['private_key']
-            else:
-                private_key = None
+            print("Register: Serializer validation successful")
             
+            # Always generate a new key pair for security
+            print("Register: Generating new key pair...")
+            key_pair = generate_key_pair()
+            print(f"Register: Key pair generated - Private key length: {len(key_pair['private_key'])}, Public key length: {len(key_pair['public_key'])}")
+            
+            # Update serializer data with keys
+            serializer.validated_data['public_key'] = key_pair['public_key']
+            serializer.validated_data['private_key'] = key_pair['private_key']
+            print("Register: Keys added to serializer validated data")
+            
+            # Create the user
+            print("Register: Saving user with serializer...")
             user = serializer.save()
+            print(f"Register: User saved - Username: {user.username}")
+            print(f"Register: User model private key length: {len(user.private_key) if user.private_key else 0}")
+            print(f"Register: User model public key length: {len(user.public_key) if user.public_key else 0}")
+            
+            # Verify the keys were saved
+            user.refresh_from_db()
+            print(f"Register: After refresh - Private key length: {len(user.private_key) if user.private_key else 0}")
+            print(f"Register: After refresh - Public key length: {len(user.public_key) if user.public_key else 0}")
+            
             login(request, user)
+            print("Register: User logged in")
             
             # Create token
             token = Token.objects.create(user=user)
+            print("Register: Auth token created")
             
             # Create a session
             session_id = str(uuid.uuid4())
             UserSession.objects.create(user=user, session_id=session_id)
+            print(f"Register: Session created with ID: {session_id}")
             
             response_data = {
                 'user': UserSerializer(user).data,
@@ -77,10 +111,15 @@ class AuthViewSet(viewsets.ViewSet):
                 'session_id': session_id
             }
             
-            if private_key:
-                response_data['private_key'] = private_key
+            if user.private_key:
+                response_data['private_key'] = user.private_key
+                print(f"Register: Private key included in response, length: {len(user.private_key)}")
+            else:
+                print("Register: WARNING - No private key found in user model for response")
             
             return Response(response_data, status=status.HTTP_201_CREATED)
+        else:
+            print(f"Register: Serializer validation failed - Errors: {serializer.errors}")
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -112,6 +151,24 @@ class AuthViewSet(viewsets.ViewSet):
             {'error': 'Not authenticated'}, 
             status=status.HTTP_401_UNAUTHORIZED
         )
+
+    @action(detail=False, methods=['put'])
+    def update_profile(self, request):
+        """Update user profile information."""
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Not authenticated'}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        user = request.user
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserSessionViewSet(viewsets.ReadOnlyModelViewSet):

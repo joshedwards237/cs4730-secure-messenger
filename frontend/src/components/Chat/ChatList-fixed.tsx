@@ -10,6 +10,7 @@ const ChatList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newChatUsername, setNewChatUsername] = useState('');
+  const [userError, setUserError] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -37,6 +38,7 @@ const ChatList: React.FC = () => {
     if (!newChatUsername) return;
 
     try {
+      // Create the chat directly - the backend will handle user existence check
       const response = await chatAPI.createChatSession([newChatUsername]);
       // Type guard to check if response is an Axios response
       if (response && typeof response === 'object' && 'data' in response) {
@@ -45,8 +47,13 @@ const ChatList: React.FC = () => {
         setChatSessions([...chatSessions, response as ChatSession]);
       }
       setNewChatUsername('');
+      setUserError(null);
     } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        setUserError('User does not exist');
+      } else {
       setError('Failed to create chat session');
+      }
     }
   };
 
@@ -79,10 +86,14 @@ const ChatList: React.FC = () => {
           type="text"
           placeholder="Enter username to start a chat"
           value={newChatUsername}
-          onChange={(e) => setNewChatUsername(e.target.value)}
+          onChange={(e) => {
+            setNewChatUsername(e.target.value);
+            setUserError(null);
+          }}
         />
         <button type="submit" className="btn-primary">Start Chat</button>
       </form>
+      {userError && <div className="user-error-message">{userError}</div>}
       
       <div className="chat-sessions">
         {chatSessions.length === 0 ? (

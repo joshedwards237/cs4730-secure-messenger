@@ -9,8 +9,11 @@ class CustomUserManager(BaseUserManager):
         if not username:
             raise ValueError('The Username field must be set')
         
+        # Ensure private_key is handled correctly
+        private_key = extra_fields.pop('private_key', '')
         user = self.model(username=username, **extra_fields)
         user.set_password(password)
+        user.private_key = private_key  # Set the private key
         user.save(using=self._db)
         return user
 
@@ -29,6 +32,7 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractUser):
     username = models.CharField(max_length=150, unique=True)
     public_key = models.TextField(blank=True)
+    private_key = models.TextField(blank=True)
     email = models.EmailField(unique=True, blank=True, null=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

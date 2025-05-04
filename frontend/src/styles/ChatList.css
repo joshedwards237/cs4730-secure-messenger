@@ -90,4 +90,14 @@
   text-align: center;
   padding: 2rem;
   color: #6c757d;
+}
+
+.user-error-message {
+  color: #dc3545;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  background-color: #f8d7da;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  text-align: center;
 } 

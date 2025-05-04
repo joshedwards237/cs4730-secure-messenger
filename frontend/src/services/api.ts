@@ -26,6 +26,7 @@ export const authAPI = {
   login: async (username: string, password: string): Promise<ApiResponse<{ user: User; token: string; session_id: string; private_key?: string }>> => {
     try {
       const response = await api.post('/api/auth/login/', { username, password });
+      console.log('Login API response:', response.data);
       const responseData = response.data as any;
       return { 
         success: true, 
@@ -33,7 +34,7 @@ export const authAPI = {
           user: responseData.user as User,
           token: responseData.token as string,
           session_id: responseData.session_id as string,
-          private_key: responseData.private_key as string | undefined
+          private_key: responseData.private_key || responseData.user?.private_key as string | undefined
         } 
       };
     } catch (error: any) {
@@ -85,6 +86,18 @@ export const authAPI = {
       return {
         success: false,
         error: error.response?.data?.detail || 'Failed to fetch user data.',
+      };
+    }
+  },
+
+  updateProfile: async (data: Partial<User>): Promise<ApiResponse<User>> => {
+    try {
+      const response = await api.put('/api/auth/update_profile/', data);
+      return { success: true, data: response.data as User };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Failed to update profile',
       };
     }
   },

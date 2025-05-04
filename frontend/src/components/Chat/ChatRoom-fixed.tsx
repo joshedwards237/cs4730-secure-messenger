@@ -26,37 +26,51 @@ const ChatRoom: React.FC = () => {
   // Fetch chat session and messages
   useEffect(() => {
     const fetchChatData = async () => {
-      console.log("flag 1")
-      if (!id || !private_key) return;
-      console.log("flag 2")
+      console.log("flag 1 - Starting fetchChatData")
+      console.log("flag 1.0 - Current auth state:", { 
+        id, 
+        hasPrivateKey: !!private_key,
+        privateKeyLength: private_key?.length,
+        username: user?.username 
+      })
+      
+      if (!id || !private_key) {
+        console.log("flag 1.1 - Missing required data:", { 
+          id, 
+          hasPrivateKey: !!private_key,
+          privateKeyLength: private_key?.length,
+          username: user?.username 
+        })
+        return;
+      }
+      
+      console.log("flag 2 - Making API call with id:", id)
       try {
         const response = await chatAPI.getChatSession(parseInt(id));
-        // Type guard to check if response is an Axios response
-        console.log("flag 3")
-        if (response && typeof response === 'object' && 'data' in response) {
-          console.log("flag 4")
-          const sessionData = response.data as ChatSession;
+        console.log("flag 3 - API response:", response)
+        if (response) {
+          console.log("flag 4 - Processing chat session data")
+          const sessionData = response;
+          console.log("flag 5 - Setting chat session:", sessionData)
           setChatSession(sessionData);
+          
           // Decrypt messages before setting them
+          console.log("flag 6 - Starting message decryption")
           const decryptedMessages = await Promise.all(
             sessionData.messages.map(async (message) => {
               try {
-                console.log('Message object:', message);
-                console.log('Message keys:', Object.keys(message));
-                console.log('encrypted_keys:', message.encrypted_keys);
-                console.log('iv:', message.iv);
-                console.log('encryption_key:', message.encryption_key);
-                
                 if (message.encrypted_keys && message.iv) {
-                  console.log('Decrypting message:', message);
-                  console.log('Current user:', user?.username);
-                  
+                  console.log("flag 6.1 - Decrypting message:", message.id)
                   // Get the encrypted AES key for the current user
                   const encryptedKey = message.encrypted_keys[user?.username || ''];
-                  console.log('Encrypted key for user:', encryptedKey);
+                  console.log("flag 6.2 - Encrypted key for user:", { 
+                    username: user?.username, 
+                    hasKey: !!encryptedKey,
+                    keyLength: encryptedKey?.length 
+                  })
                   
                   if (!encryptedKey) {
-                    console.error('No encrypted key found for user');
+                    console.log("flag 6.3 - No encrypted key found for user")
                     return {
                       ...message,
                       content: '[Encrypted message - no key]',
@@ -65,21 +79,17 @@ const ChatRoom: React.FC = () => {
                   }
 
                   // First decrypt the AES key with RSA
-                  console.log('Decrypting AES key with RSA...');
+                  console.log("flag 6.4 - Decrypting AES key with RSA")
                   const decryptedKeyBase64 = await decryptWithPrivateKey(private_key, encryptedKey);
-                  console.log('Decrypted AES key (base64):', decryptedKeyBase64);
+                  console.log("flag 6.5 - Decrypted AES key (base64):", decryptedKeyBase64)
                   
                   // Use the base64 key directly
                   const decryptedKey = decryptedKeyBase64;
-                  console.log('Using base64 key for AES decryption');
                   
                   // Then decrypt the message content with AES
-                  console.log('Decrypting message content with AES...');
-                  console.log('IV:', message.iv);
-                  console.log('Encrypted content:', message.content);
-                  
+                  console.log("flag 6.6 - Decrypting message content with AES")
                   const decryptedContent = await decryptWithAes(decryptedKey, message.iv, message.content);
-                  console.log('Decrypted content:', decryptedContent);
+                  console.log("flag 6.7 - Decrypted content:", decryptedContent)
                   
                   return {
                     ...message,
@@ -98,78 +108,23 @@ const ChatRoom: React.FC = () => {
               }
             })
           );
+          console.log("flag 7 - Setting decrypted messages:", decryptedMessages)
           setMessages(decryptedMessages);
+          setLoading(false);
         } else {
-          setChatSession(response as ChatSession);
-          console.log("flag 1.1")
-          // Decrypt messages before setting them
-          const decryptedMessages = await Promise.all(
-            (response as ChatSession).messages.map(async (message) => {
-              try {
-                console.log("flag 1.2")
-                if (message.encrypted_keys && message.iv) {
-                  console.log("flag 1.3")
-                  console.log('Decrypting message:', message);
-                  console.log('Current user:', user?.username);
-                  
-                  // Get the encrypted AES key for the current user
-                  const encryptedKey = message.encrypted_keys[user?.username || ''];
-                  console.log('Encrypted key for user:', encryptedKey);
-                  
-                  if (!encryptedKey) {
-                    console.error('No encrypted key found for user');
-                    return {
-                      ...message,
-                      content: '[Encrypted message - no key]',
-                      decrypted: false
-                    };
-                  }
-
-                  // First decrypt the AES key with RSA
-                  console.log('Decrypting AES key with RSA...');
-                  const decryptedKeyBase64 = await decryptWithPrivateKey(private_key, encryptedKey);
-                  console.log('Decrypted AES key (base64):', decryptedKeyBase64);
-                  
-                  // Use the base64 key directly
-                  const decryptedKey = decryptedKeyBase64;
-                  console.log('Using base64 key for AES decryption');
-                  
-                  // Then decrypt the message content with AES
-                  console.log('Decrypting message content with AES...');
-                  console.log('IV:', message.iv);
-                  console.log('Encrypted content:', message.content);
-                  
-                  const decryptedContent = await decryptWithAes(decryptedKey, message.iv, message.content);
-                  console.log('Decrypted content:', decryptedContent);
-                  
-                  return {
-                    ...message,
-                    content: decryptedContent,
-                    decrypted: true
-                  };
-                }
-                return message;
-              } catch (error) {
-                console.error('Failed to decrypt message:', error);
-                return {
-                  ...message,
-                  content: '[Encrypted message]',
-                  decrypted: false
-                };
-              }
-            })
-          );
-          setMessages(decryptedMessages);
+          console.log("flag 8 - No response data received")
+          setError('Failed to load chat session');
+          setLoading(false);
         }
-        setLoading(false);
       } catch (err) {
+        console.error('Error fetching chat data:', err);
         setError('Failed to load chat session');
         setLoading(false);
       }
     };
 
     fetchChatData();
-  }, [id, private_key]);
+  }, [id, private_key, user?.username]);
 
   // Handle sending a new message
   const handleSendMessage = async () => {
@@ -272,14 +227,14 @@ const ChatRoom: React.FC = () => {
         <div className="chat-container">
           <div className="chat-header">
             <div className="chat-header-left">
-              <h2>{chatSession?.name || 'Chat Room'}</h2>
-              <div className="participants">
-                {chatSession?.participants.map((p) => (
-                  <span key={p.id} className="participant">
-                    {p.username}
-                  </span>
-                ))}
-              </div>
+            <h2>{chatSession?.name || 'Chat Room'}</h2>
+            <div className="participants">
+              {chatSession?.participants.map((p) => (
+                <span key={p.id} className="participant">
+                  {p.username}
+                </span>
+              ))}
+            </div>
             </div>
             <button onClick={handleDeleteChat} className="btn-delete">
               Delete Chat
@@ -292,7 +247,7 @@ const ChatRoom: React.FC = () => {
                 key={message.id}
                 className={`message ${message.sender.username === user?.username ? 'sent' : 'received'}`}
               >
-                <div className="message-header">             
+                <div className="message-header">
                   <span className="timestamp">
                     {new Date(message.timestamp).toLocaleString()}
                   </span>

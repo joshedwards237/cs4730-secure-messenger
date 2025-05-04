@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authAPI } from '../services/api';
-import { AuthState } from '../types';
+import { AuthState, User } from '../types';
 import { generateKeyPair } from '../utils/encryption';
 
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<boolean>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  setUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,23 +38,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log('checkAuth: Starting authentication check');
         // Try to get the current user
         const response = await authAPI.getCurrentUser();
+        console.log('checkAuth: Current user response:', response);
         
         // Get session ID and private key from local storage
         const sessionId = localStorage.getItem('session_id');
         const privateKey = localStorage.getItem('private_key');
+        console.log('checkAuth: Local storage values:', { sessionId, privateKey });
         
         if (response.success && response.data && sessionId) {
+          console.log('checkAuth: Setting authenticated state with private key:', privateKey || response.data.private_key || null);
           setAuthState({
             user: response.data,
             session_id: sessionId,
-            private_key: privateKey,
+            private_key: privateKey || response.data.private_key || null,
             isAuthenticated: true,
             isLoading: false,
             error: null,
           });
         } else {
+          console.log('checkAuth: Setting unauthenticated state');
           setAuthState({
             user: null,
             session_id: null,
@@ -64,6 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           });
         }
       } catch (error) {
+        console.error('checkAuth: Error during authentication check:', error);
         setAuthState({
           user: null,
           session_id: null,
@@ -80,28 +87,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
+      console.log('login: Starting login process for user:', username);
       setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
       
       const response = await authAPI.login(username, password);
+      console.log('login: Login response:', response);
       
       if (response.success && response.data) {
         // Save token and session ID to local storage
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('session_id', response.data.session_id);
-        if (response.data.private_key) {
-          localStorage.setItem('private_key', response.data.private_key);
+        
+        // Get private key from response
+        const privateKey = response.data.private_key || response.data.user?.private_key;
+        console.log('login: Private key from response:', { 
+          hasPrivateKey: !!privateKey,
+          length: privateKey?.length,
+          source: privateKey ? (response.data.private_key ? 'response.data.private_key' : 'response.data.user.private_key') : 'none'
+        });
+        
+        if (privateKey) {
+          console.log('login: Saving private key to local storage');
+          localStorage.setItem('private_key', privateKey);
         }
         
+        console.log('login: Setting authenticated state with private key:', privateKey || null);
         setAuthState({
           user: response.data.user,
           session_id: response.data.session_id,
-          private_key: response.data.private_key || null,
+          private_key: privateKey || null,
           isAuthenticated: true,
           isLoading: false,
           error: null,
         });
         return true;
       } else {
+        console.log('login: Login failed:', response.error);
         setAuthState((prev) => ({
           ...prev,
           isLoading: false,
@@ -110,6 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return false;
       }
     } catch (error) {
+      console.error('login: Error during login:', error);
       setAuthState((prev) => ({
         ...prev,
         isLoading: false,
@@ -189,11 +211,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const setUser = (user: User | null) => {
+    setAuthState(prev => ({
+      ...prev,
+      user,
+      isAuthenticated: !!user
+    }));
+  };
+
   const value = {
     ...authState,
     login,
     register,
     logout,
+    setUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

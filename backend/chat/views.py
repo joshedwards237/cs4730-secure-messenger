@@ -30,11 +30,27 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Get chat sessions where the user is an active participant."""
         user = self.request.user
-        active_participant_sessions = ChatParticipant.objects.filter(
-            user=user,
-            is_active=True
-        ).values_list('chat_session', flat=True)
-        return ChatSession.objects.filter(id__in=active_participant_sessions)
+        logger.info(f"Getting chat sessions for user: {user.username}")
+        
+        if self.action == 'retrieve':
+            # For retrieving a specific chat session, check if user is a participant
+            chat_id = self.kwargs.get('pk')
+            logger.info(f"Retrieving specific chat session: {chat_id}")
+            if chat_id:
+                queryset = ChatSession.objects.filter(
+                    id=chat_id,
+                    participants__user=user,
+                    participants__is_active=True
+                )
+                logger.info(f"Found {queryset.count()} matching chat sessions")
+                return queryset
+        # For list view, return all active chat sessions for the user
+        queryset = ChatSession.objects.filter(
+            participants__user=user,
+            participants__is_active=True
+        )
+        logger.info(f"Found {queryset.count()} active chat sessions for user")
+        return queryset
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -183,6 +199,19 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             
             serializer = MessageSerializer(message)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, *args, **kwargs):
+        """Retrieve a specific chat session."""
+        logger.info(f"Retrieve request for chat session {kwargs.get('pk')} from user {request.user.username}")
+        try:
+            instance = self.get_object()
+            logger.info(f"Found chat session: {instance.id}")
+            serializer = self.get_serializer(instance)
+            logger.info(f"Serialized chat session data: {serializer.data}")
+            return Response(serializer.data)
+        except Exception as e:
+            logger.error(f"Error retrieving chat session: {str(e)}")
+            raise
 
 
 class MessageViewSet(viewsets.ModelViewSet):

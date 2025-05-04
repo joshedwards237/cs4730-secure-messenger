@@ -21,16 +21,52 @@
 }
 
 .chat-header {
-  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
   background-color: #f8f9fa;
-  border-radius: 8px 8px 0 0;
   border-bottom: 1px solid #dee2e6;
+}
+
+.chat-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .chat-header h2 {
   margin: 0;
   font-size: 1.5rem;
   color: #333;
+}
+
+.participants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.participant {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background-color: #e9ecef;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  color: #495057;
+}
+
+.participant::before {
+  content: "•";
+  color: #6c757d;
+  font-size: 1rem;
+}
+
+.participant:first-child::before {
+  display: none;
 }
 
 .messages-container {
